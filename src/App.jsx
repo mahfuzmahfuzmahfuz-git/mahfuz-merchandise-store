@@ -10,7 +10,7 @@ import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderConfirmation from './pages/OrderConfirmation';
-import { STORAGE_KEY } from './components/ConsentBanner';
+import { STORAGE_KEY, executeGtagUpdate } from './components/ConsentBanner';
 
 // Initialize dataLayer
 window.dataLayer = window.dataLayer || [];
@@ -35,6 +35,14 @@ export default function App() {
     const existing = localStorage.getItem(STORAGE_KEY);
     if (!existing) {
       setConsentVisible(true);
+    } else {
+      try {
+        const parsed = JSON.parse(existing);
+        executeGtagUpdate(parsed.analytics, parsed.marketing);
+      } catch (e) {
+        // corrupted state — show banner again
+        setConsentVisible(true);
+      }
     }
   }, []);
 

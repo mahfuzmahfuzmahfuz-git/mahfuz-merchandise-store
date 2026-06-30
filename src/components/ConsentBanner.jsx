@@ -1,19 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 const STORAGE_KEY = 'mahfuz_consent_state';
+
+function executeGtagUpdate(analyticsGranted, marketingGranted) {
+  if (typeof window.gtag !== 'function') return;
+  window.gtag('consent', 'update', {
+    analytics_storage: analyticsGranted ? 'granted' : 'denied',
+    ad_storage: marketingGranted ? 'granted' : 'denied',
+    ad_user_data: marketingGranted ? 'granted' : 'denied',
+    ad_personalization: marketingGranted ? 'granted' : 'denied',
+  });
+}
 
 export default function ConsentBanner({ visible, onClose }) {
   const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
 
   const save = (analyticsVal, marketingVal) => {
-    const state = {
+    executeGtagUpdate(analyticsVal, marketingVal);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
       strictlyNecessary: true,
       analytics: analyticsVal,
       marketing: marketingVal,
       timestamp: new Date().toISOString(),
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }));
     onClose();
   };
 
@@ -89,4 +99,4 @@ export default function ConsentBanner({ visible, onClose }) {
   );
 }
 
-export { STORAGE_KEY };
+export { STORAGE_KEY, executeGtagUpdate };
