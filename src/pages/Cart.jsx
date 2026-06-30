@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { pushEcommerceEvent, toGA4Item } from '../utils/analytics';
 
 function CartItem({ item, onRemove, onUpdateQty }) {
   return (
@@ -53,6 +55,62 @@ export default function Cart() {
   const { cartItems, removeFromCart, updateQuantity, cartTotal } = useCart();
   const navigate = useNavigate();
 
+  // GA4: view_cart — fires once when the cart page mounts.
+  // Guarded against empty cart so we don't push a valueless event on the
+  // empty-bag state. The empty dep array is intentional — we want one event
+  // per page visit, not one per cart update.
+  useEffect(() => {
+    if (cartItems.length === 0) return;
+    pushEcommerceEvent({
+      event: 'view_cart',
+      ecommerce: {
+        currency: 'GBP',
+        value: cartTotal,
+        items: cartItems.map((item, index) =>
+          toGA4Item(item, { size: item.size, quantity: item.quantity, index })
+        ),
+      },
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // GA4: remove_from_cart — wraps removeFromCart to fire before the item
+  // is deleted from context state. We capture the full item quantity because
+  // the "Remove" button removes the entire line at once.
+  const handleRemove = (id, size) => {
+    const item = cartItems.find(i => i.id === id && i.size === size);
+    if (item) {
+      pushEcommerceEvent({
+        event: 'remove_from_cart',
+        ecommerce: {
+          currency: 'GBP',
+          value: item.price * item.quantity,
+          items: [toGA4Item(item, { size: item.size, quantity: item.quantity })],
+        },
+      });
+    }
+    removeFromCart(id, size);
+  };
+
+  // GA4: remove_from_cart (qty decrease) — wraps updateQuantity to fire only
+  // when the quantity goes DOWN. Quantity increases (the + button) are not
+  // tracked here because add_to_cart was already fired on the PDP.
+  // removedQty is always 1 from the UI but calculated dynamically for safety.
+  const handleUpdateQty = (id, size, newQty) => {
+    const item = cartItems.find(i => i.id === id && i.size === size);
+    if (item && newQty < item.quantity) {
+      const removedQty = item.quantity - newQty;
+      pushEcommerceEvent({
+        event: 'remove_from_cart',
+        ecommerce: {
+          currency: 'GBP',
+          value: item.price * removedQty,
+          items: [toGA4Item(item, { size: item.size, quantity: removedQty })],
+        },
+      });
+    }
+    updateQuantity(id, size, newQty);
+  };
+
   if (cartItems.length === 0) {
     return (
       <div className="max-w-screen-xl mx-auto px-6 py-24 text-center">
@@ -79,8 +137,8 @@ export default function Cart() {
             <CartItem
               key={`${item.id}-${item.size}`}
               item={item}
-              onRemove={removeFromCart}
-              onUpdateQty={updateQuantity}
+              onRemove={handleRemove}
+              onUpdateQty={handleUpdateQty}
             />
           ))}
           <div className="pt-6">

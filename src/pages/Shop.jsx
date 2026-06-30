@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { products } from '../data/products';
+import { pushEcommerceEvent, toGA4Item } from '../utils/analytics';
 
 function ProductCard({ product }) {
   return (
@@ -27,6 +29,22 @@ function ProductCard({ product }) {
 }
 
 export default function Shop() {
+  // GA4: view_item_list — fires once when the product listing page mounts.
+  // The empty dependency array is intentional: we only want one event per page
+  // load, not one per render. Products are static so there's no risk of stale data.
+  useEffect(() => {
+    pushEcommerceEvent({
+      event: 'view_item_list',
+      ecommerce: {
+        currency: 'GBP',
+        item_list_id: 'the_collection',
+        item_list_name: 'The Collection',
+        // Map all visible products to GA4 items; index = position in the grid
+        items: products.map((product, index) => toGA4Item(product, { index })),
+      },
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="max-w-screen-xl mx-auto px-6 py-12">
       {/* Page header */}

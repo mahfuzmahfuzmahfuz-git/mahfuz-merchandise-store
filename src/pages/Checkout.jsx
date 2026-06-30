@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { pushEcommerceEvent, toGA4Item } from '../utils/analytics';
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -12,6 +13,23 @@ export default function Checkout() {
     phone: '',
   });
 
+  // GA4: begin_checkout — fires once when the checkout page mounts.
+  // Signals the start of the purchase funnel. Guarded so an accidental direct
+  // URL visit to /checkout with an empty cart doesn't push a valueless event.
+  useEffect(() => {
+    if (cartItems.length === 0) return;
+    pushEcommerceEvent({
+      event: 'begin_checkout',
+      ecommerce: {
+        currency: 'GBP',
+        value: cartTotal,
+        items: cartItems.map((item, index) =>
+          toGA4Item(item, { size: item.size, quantity: item.quantity, index })
+        ),
+      },
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleChange = (e) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
@@ -20,8 +38,21 @@ export default function Checkout() {
     e.preventDefault();
     const orderId = 'ORD-' + Math.random().toString(36).substring(2, 7).toUpperCase();
     const finalTotal = cartTotal;
+
+    // Snapshot cartItems BEFORE clearCart() so OrderConfirmation can fire the
+    // purchase event with the full items array. Once clearCart() runs, context
+    // state is empty and the data is unrecoverable without this snapshot.
+    const purchasedItems = [...cartItems];
+
     clearCart();
-    navigate('/order-confirmation', { state: { orderId, total: finalTotal, customerName: form.firstName } });
+    navigate('/order-confirmation', {
+      state: {
+        orderId,
+        total: finalTotal,
+        customerName: form.firstName,
+        purchasedItems, // passed to OrderConfirmation for the purchase dataLayer event
+      },
+    });
   };
 
   const inputClass = "w-full border-b border-[#e5e5e5] bg-transparent py-3 text-[13px] font-sans text-charcoal placeholder-muted focus:outline-none focus:border-charcoal transition-colors duration-200";

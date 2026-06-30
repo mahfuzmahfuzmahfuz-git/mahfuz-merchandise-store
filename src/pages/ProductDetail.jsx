@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getProductById } from '../data/products';
 import { useCart } from '../context/CartContext';
+import { pushEcommerceEvent, toGA4Item } from '../utils/analytics';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -11,6 +12,21 @@ export default function ProductDetail() {
   const [selectedSize, setSelectedSize] = useState(null);
   const [added, setAdded] = useState(false);
   const [error, setError] = useState(false);
+
+  // GA4: view_item — fires when a product detail page loads or when the user
+  // navigates between product routes (e.g. /product/1 → /product/2) without
+  // a full page reload. Keyed on product.id so it re-fires on product change.
+  useEffect(() => {
+    if (!product) return;
+    pushEcommerceEvent({
+      event: 'view_item',
+      ecommerce: {
+        currency: 'GBP',
+        value: product.price,
+        items: [toGA4Item(product)],
+      },
+    });
+  }, [product?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!product) {
     return (
@@ -28,6 +44,19 @@ export default function ProductDetail() {
       setError(true);
       return;
     }
+
+    // GA4: add_to_cart — fired before updating app state so GTM captures the
+    // event even if a subsequent re-render were to change the selected size.
+    // quantity is always 1 here because the PDP has no qty selector.
+    pushEcommerceEvent({
+      event: 'add_to_cart',
+      ecommerce: {
+        currency: 'GBP',
+        value: product.price * 1,
+        items: [toGA4Item(product, { size: selectedSize, quantity: 1 })],
+      },
+    });
+
     addToCart(product, selectedSize);
     setAdded(true);
     setError(false);

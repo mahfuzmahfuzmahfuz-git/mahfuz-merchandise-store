@@ -25,6 +25,10 @@ export const products = [
     name: 'Script Paneled Rugby',
     price: 255.00,
     priceDisplay: '£255.00',
+    // Custom item-scoped GA4 parameters — register these as custom dimensions
+    // in GA4 Admin > Custom definitions > Item-scoped to analyse in reports.
+    in_stock: true,
+    is_limited_edition: true,
     image: '/images/product-2.jpg',
     description: 'Navy rugby in heavy cotton jersey fabric. Embroidered logo at chest with contrast paneling at body, arms, and collar.',
     details: [

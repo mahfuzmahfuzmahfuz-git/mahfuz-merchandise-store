@@ -1,10 +1,41 @@
+import { useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
+import { pushEcommerceEvent, toGA4Item } from '../utils/analytics';
 
 export default function OrderConfirmation() {
   const { state } = useLocation();
   const orderId = state?.orderId || 'ORD-UNKNOWN';
   const total = state?.total ?? 0;
   const customerName = state?.customerName || '';
+  const purchasedItems = state?.purchasedItems || [];
+
+  // GA4: purchase — the most important ecommerce event. Fires once on mount.
+  //
+  // transaction_id uses the orderId generated in Checkout.jsx (ORD-XXXXX format).
+  // GA4 uses this to deduplicate events — if the user refreshes the confirmation
+  // page, GA4 will not double-count the purchase because the transaction_id matches.
+  //
+  // tax and shipping are 0 because this store doesn't collect them at checkout.
+  // Set these to real values once a payment/shipping integration is added.
+  //
+  // purchasedItems is a snapshot passed from Checkout.jsx before clearCart() ran,
+  // so the full items array is available here even though the cart is now empty.
+  useEffect(() => {
+    if (purchasedItems.length === 0) return;
+    pushEcommerceEvent({
+      event: 'purchase',
+      ecommerce: {
+        transaction_id: orderId,
+        value: total,
+        tax: 0,
+        shipping: 0,
+        currency: 'GBP',
+        items: purchasedItems.map((item, index) =>
+          toGA4Item(item, { size: item.size, quantity: item.quantity, index })
+        ),
+      },
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="max-w-screen-xl mx-auto px-6 py-24 flex flex-col items-center justify-center text-center" style={{ minHeight: 'calc(100vh - 56px - 88px)' }}>
