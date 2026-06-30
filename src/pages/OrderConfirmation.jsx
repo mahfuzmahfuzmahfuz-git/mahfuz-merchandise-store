@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { pushEcommerceEvent, toGA4Item } from '../utils/analytics';
+import { pushEcommerceEvent, toGA4Item, buildUserData } from '../utils/analytics';
 
 export default function OrderConfirmation() {
   const { state } = useLocation();
@@ -8,21 +8,23 @@ export default function OrderConfirmation() {
   const total = state?.total ?? 0;
   const customerName = state?.customerName || '';
   const purchasedItems = state?.purchasedItems || [];
+  // customerDetails was passed from Checkout.jsx before clearCart() ran
+  const customerDetails = state?.customerDetails || null;
 
-  // GA4: purchase — the most important ecommerce event. Fires once on mount.
+  // GA4: purchase with Enhanced Conversions user_data.
   //
-  // transaction_id uses the orderId generated in Checkout.jsx (ORD-XXXXX format).
-  // GA4 uses this to deduplicate events — if the user refreshes the confirmation
-  // page, GA4 will not double-count the purchase because the transaction_id matches.
+  // user_data sits at the EVENT ROOT alongside ecommerce, NOT inside it.
+  // buildUserData() normalizes the raw form values (lowercase email,
+  // E.164 phone) so GTM's Enhanced Conversions tag can hash and match them.
   //
-  // tax and shipping are 0 because this store doesn't collect them at checkout.
-  // Set these to real values once a payment/shipping integration is added.
+  // transaction_id deduplication: GA4 will not count a second purchase if
+  // the same transaction_id arrives again (e.g. user refreshes this page).
   //
-  // purchasedItems is a snapshot passed from Checkout.jsx before clearCart() ran,
-  // so the full items array is available here even though the cart is now empty.
+  // tax and shipping are 0 — set to real values once payment is integrated.
   useEffect(() => {
     if (purchasedItems.length === 0) return;
-    pushEcommerceEvent({
+
+    const eventPayload = {
       event: 'purchase',
       ecommerce: {
         transaction_id: orderId,
@@ -30,12 +32,21 @@ export default function OrderConfirmation() {
         tax: 0,
         shipping: 0,
         currency: 'GBP',
-        // No explicit index passed — toGA4Item reads item.index (catalog position)
+        // No explicit index — toGA4Item reads item.index (catalog position)
         items: purchasedItems.map(item =>
           toGA4Item(item, { size: item.size, quantity: item.quantity })
         ),
       },
-    });
+    };
+
+    // Attach user_data when customer details are available.
+    // Placed outside ecommerce at the root level — this is the correct
+    // structure for Google Ads Enhanced Conversions via GTM.
+    if (customerDetails) {
+      eventPayload.user_data = buildUserData(customerDetails);
+    }
+
+    pushEcommerceEvent(eventPayload);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

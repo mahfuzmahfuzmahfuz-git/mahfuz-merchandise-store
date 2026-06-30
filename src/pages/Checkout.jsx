@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { pushEcommerceEvent, toGA4Item } from '../utils/analytics';
+import { pushEcommerceEvent, toGA4Item, buildUserData } from '../utils/analytics';
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -13,24 +13,6 @@ export default function Checkout() {
     phone: '',
   });
 
-  // GA4: begin_checkout — fires once when the checkout page mounts.
-  // Signals the start of the purchase funnel. Guarded so an accidental direct
-  // URL visit to /checkout with an empty cart doesn't push a valueless event.
-  useEffect(() => {
-    if (cartItems.length === 0) return;
-    pushEcommerceEvent({
-      event: 'begin_checkout',
-      ecommerce: {
-        currency: 'GBP',
-        value: cartTotal,
-        // No explicit index passed — toGA4Item reads item.index (catalog position)
-        items: cartItems.map(item =>
-          toGA4Item(item, { size: item.size, quantity: item.quantity })
-        ),
-      },
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const handleChange = (e) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
@@ -40,10 +22,28 @@ export default function Checkout() {
     const orderId = 'ORD-' + Math.random().toString(36).substring(2, 7).toUpperCase();
     const finalTotal = cartTotal;
 
-    // Snapshot cartItems BEFORE clearCart() so OrderConfirmation can fire the
-    // purchase event with the full items array. Once clearCart() runs, context
-    // state is empty and the data is unrecoverable without this snapshot.
+    // Snapshot cartItems BEFORE clearCart() — once the cart is cleared the
+    // data is gone from context and can't be recovered for the purchase event.
     const purchasedItems = [...cartItems];
+
+    // GA4: begin_checkout with Enhanced Conversions user_data.
+    //
+    // Fired here (on form submit) rather than on component mount because the
+    // form is empty at mount time — user_data requires actual PII values.
+    // user_data sits at the EVENT ROOT alongside ecommerce, NOT inside it.
+    // buildUserData() normalizes email to lowercase and phone to E.164 format.
+    pushEcommerceEvent({
+      event: 'begin_checkout',
+      user_data: buildUserData(form),
+      ecommerce: {
+        currency: 'GBP',
+        value: finalTotal,
+        // No explicit index — toGA4Item reads item.index (catalog position)
+        items: purchasedItems.map(item =>
+          toGA4Item(item, { size: item.size, quantity: item.quantity })
+        ),
+      },
+    });
 
     clearCart();
     navigate('/order-confirmation', {
@@ -51,7 +51,15 @@ export default function Checkout() {
         orderId,
         total: finalTotal,
         customerName: form.firstName,
-        purchasedItems, // passed to OrderConfirmation for the purchase dataLayer event
+        purchasedItems,
+        // Pass raw form values so OrderConfirmation can build user_data for
+        // the purchase event. Normalization happens there via buildUserData().
+        customerDetails: {
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: form.phone,
+        },
       },
     });
   };

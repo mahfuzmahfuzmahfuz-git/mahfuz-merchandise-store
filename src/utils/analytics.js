@@ -12,6 +12,57 @@
 //     in environments where GTM hasn't injected itself yet (e.g. dev with
 //     ad-blocker, Lighthouse audits, unit tests).
 
+// ─── Enhanced Conversions — User Data Utilities ───────────────────────────────
+//
+// Google Ads Enhanced Conversions require a user_data object at the ROOT of the
+// event payload (not inside ecommerce). These utilities normalize raw form values
+// to the exact format Google mandates before they are pushed to the dataLayer.
+//
+// user_data must never be hashed here — GTM's Enhanced Conversions tag handles
+// SHA-256 hashing automatically. Push plain, normalized PII only.
+
+// Strips formatting characters and converts a phone number to E.164 format.
+// E.164 requires a leading +, full country code, and no spaces or punctuation.
+// Examples:
+//   "07123 456789"    → "+447123456789"  (UK local format)
+//   "+44 7123 456789" → "+447123456789"  (already has country code, has spaces)
+//   "447123456789"    → "+447123456789"  (digits only, no +)
+function normalizePhone(raw) {
+  // Strip spaces, dashes, and parentheses first
+  let cleaned = raw.replace(/[\s\-\(\)]/g, '');
+
+  if (cleaned.startsWith('0')) {
+    // UK local format (07xxx) — swap leading 0 for +44
+    return '+44' + cleaned.slice(1);
+  }
+  if (cleaned.startsWith('+')) {
+    // Already in E.164 or international format — return as-is
+    return cleaned;
+  }
+  if (cleaned.startsWith('44')) {
+    // Country code present but missing the + prefix
+    return '+' + cleaned;
+  }
+  // Unknown format — assume UK and prepend +44 as a safe fallback
+  return '+44' + cleaned;
+}
+
+// Builds a Google-mandated user_data object from raw checkout form values.
+// Keys must match exactly: email_address, phone_number, and the address sub-keys.
+// Only fields the store actually collects are included — omitting uncollected
+// fields (city, region, postal_code) is correct; sending empty strings is not.
+export function buildUserData({ firstName, lastName, email, phone }) {
+  return {
+    email_address: email.trim().toLowerCase(),
+    phone_number: normalizePhone(phone.trim()),
+    address: {
+      first_name: firstName.trim().toLowerCase(),
+      last_name: lastName.trim().toLowerCase(),
+      country: 'gb', // hardcoded — this store ships within the UK only
+    },
+  };
+}
+
 export function pushEcommerceEvent(eventData) {
   if (typeof window === 'undefined' || !window.dataLayer) return;
   window.dataLayer.push({ ecommerce: null }); // clear previous ecommerce object
