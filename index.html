@@ -1,6 +1,53 @@
 <!doctype html>
 <html lang="en">
   <head>
+
+
+
+    <!-- 1. Consent Mode v2 Advanced Baseline Definition -->
+    <script>
+      // Define dataLayer and the gtag function explicitly on the window object
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){window.dataLayer.push(arguments);}
+
+      // Check if a saved consent state exists in localStorage from a prior visit
+      var savedConsent = localStorage.getItem('mahfuz_consent_state');
+      
+      if (savedConsent) {
+        try {
+          var parsedConsent = JSON.parse(savedConsent);
+          
+          // Dynamically map local choices back to Google parameters to avoid transition drops
+          gtag('consent', 'default', {
+            'analytics_storage': parsedConsent.analytics ? 'granted' : 'denied',
+            'ad_storage': parsedConsent.marketing ? 'granted' : 'denied',
+            'ad_user_data': parsedConsent.marketing ? 'granted' : 'denied',
+            'ad_personalization': parsedConsent.marketing ? 'granted' : 'denied',
+            'wait_for_update': 500
+          });
+        } catch (e) {
+          // Fallback to strict denied state if JSON parsing fails
+          setDefaultDenied();
+        }
+      } else {
+        // No saved state found: Enforce strict default denied state for a net-new visitor
+        setDefaultDenied();
+      }
+
+      function setDefaultDenied() {
+        gtag('consent', 'default', {
+          'analytics_storage': 'denied',
+          'ad_storage': 'denied',
+          'ad_user_data': 'denied',
+          'ad_personalization': 'denied',
+          'wait_for_update': 500
+        });
+      }
+
+      // Configure advanced tags features globally before loading the container
+      gtag('set', 'ads_data_redaction', true);
+      gtag('set', 'url_passthrough', true);
+    </script>
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
