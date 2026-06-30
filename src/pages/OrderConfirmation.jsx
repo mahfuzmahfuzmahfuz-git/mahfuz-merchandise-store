@@ -30,8 +30,9 @@ export default function OrderConfirmation() {
         tax: 0,
         shipping: 0,
         currency: 'GBP',
-        items: purchasedItems.map((item, index) =>
-          toGA4Item(item, { size: item.size, quantity: item.quantity, index })
+        // No explicit index passed — toGA4Item reads item.index (catalog position)
+        items: purchasedItems.map(item =>
+          toGA4Item(item, { size: item.size, quantity: item.quantity })
         ),
       },
     });

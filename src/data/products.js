@@ -1,6 +1,7 @@
 export const products = [
   {
     id: 1,
+    index: 0, // catalog position — used as GA4 item index throughout the funnel
     name: 'Washed Ringer Tee',
     price: 95.00,
     priceDisplay: '£95.00',
@@ -22,6 +23,7 @@ export const products = [
   },
   {
     id: 2,
+    index: 1, // catalog position — used as GA4 item index throughout the funnel
     name: 'Script Paneled Rugby',
     price: 255.00,
     priceDisplay: '£255.00',
@@ -49,6 +51,7 @@ export const products = [
   },
   {
     id: 3,
+    index: 2, // catalog position — used as GA4 item index throughout the funnel
     name: 'Long-Sleeve Rally Tee',
     price: 170.00,
     priceDisplay: '£170.00',

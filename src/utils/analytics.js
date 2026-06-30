@@ -21,15 +21,26 @@ export function pushEcommerceEvent(eventData) {
 // Maps an internal product/cart-item object to a GA4-compliant items entry.
 //
 // Parameters accepted via opts:
-//   size     — mapped to item_variant (the selected size, e.g. "M")
-//   quantity — defaults to 1; set to actual qty for cart events
-//   index    — zero-based position in the list (required for view_item_list)
+//   size          — mapped to item_variant (the selected size, e.g. "M")
+//   quantity      — defaults to 1; set to actual qty for cart events
+//   index         — explicit override for the GA4 item position; only pass this
+//                   from view_item_list where the list position matters. For all
+//                   other events (view_item, add_to_cart, cart, checkout, purchase)
+//                   omit it — the function reads product.index instead, which is
+//                   the catalog position stored on the product object in products.js.
+//                   This keeps the index value consistent throughout the funnel.
 //
-// Custom item-scoped parameters (in_stock, is_limited_edition) are only
-// appended when explicitly defined on the product. This keeps the items array
-// clean for products that don't carry these fields. To surface these in GA4
-// reports, register them as custom dimensions under Admin > Custom definitions.
-export function toGA4Item(product, { size, quantity = 1, index = 0 } = {}) {
+// Custom item-scoped parameters (in_stock, is_limited_edition) are conditionally
+// appended when defined on the product. Cart items carry these too because
+// CartContext spreads the full product object via { ...product, size, quantity }.
+// Register them as item-scoped custom dimensions in GA4 Admin > Custom definitions.
+export function toGA4Item(product, { size, quantity = 1, index: explicitIndex } = {}) {
+  // Prefer an explicitly passed index (e.g. list position on PLP).
+  // Fall back to the catalog index stored on the product itself so that
+  // view_item, add_to_cart, and all cart/checkout/purchase events
+  // consistently report the same position as view_item_list did.
+  const index = explicitIndex !== undefined ? explicitIndex : (product.index ?? 0);
+
   const item = {
     item_id: String(product.id),
     item_name: product.name,

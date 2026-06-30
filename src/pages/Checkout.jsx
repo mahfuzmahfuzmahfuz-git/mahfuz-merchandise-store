@@ -23,8 +23,9 @@ export default function Checkout() {
       ecommerce: {
         currency: 'GBP',
         value: cartTotal,
-        items: cartItems.map((item, index) =>
-          toGA4Item(item, { size: item.size, quantity: item.quantity, index })
+        // No explicit index passed — toGA4Item reads item.index (catalog position)
+        items: cartItems.map(item =>
+          toGA4Item(item, { size: item.size, quantity: item.quantity })
         ),
       },
     });
