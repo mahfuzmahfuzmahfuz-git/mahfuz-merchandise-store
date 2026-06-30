@@ -27,10 +27,27 @@ function executeGtagUpdate(analyticsGranted, marketingGranted) {
 //   visible   — controls whether the banner renders (managed by App.jsx)
 //   onClose   — called after any save action; App.jsx sets visible=false
 export default function ConsentBanner({ visible, onClose }) {
-  // Toggle state for the two user-controlled categories.
-  // Strictly Necessary is always true and has no toggle.
-  const [analytics, setAnalytics] = useState(false);
-  const [marketing, setMarketing] = useState(false);
+  // Toggle state initialises from localStorage so that re-opening the banner
+  // via "Manage Cookies" reflects the user's previously saved choices.
+  // Using a lazy initializer (function form of useState) avoids reading
+  // localStorage on every render — it only runs once on mount.
+  const [analytics, setAnalytics] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try { return JSON.parse(saved).analytics || false; }
+      catch (e) { return false; }
+    }
+    return false;
+  });
+
+  const [marketing, setMarketing] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try { return JSON.parse(saved).marketing || false; }
+      catch (e) { return false; }
+    }
+    return false;
+  });
 
   // Central save handler — always runs gtag update first, then persists to
   // localStorage, then closes the banner. Order matters: gtag must fire before
