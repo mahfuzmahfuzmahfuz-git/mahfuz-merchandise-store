@@ -1,5 +1,5 @@
 import { buildArrival } from './channels.js';
-import { randomProduct, randomSize } from './products.js';
+import { randomSize, shuffledProducts } from './products.js';
 import { generateIdentity } from './identity.js';
 import { pickUserAgent } from './stealth.js';
 
@@ -58,28 +58,48 @@ async function logIn(page, account) {
 
 async function browseAndMaybeAddToCart(page, rng, { forceAddToCart = false } = {}) {
   await goToShopViaHeader(page);
-  const viewCount = 1 + Math.floor(rng() * 3); // 1-3 product views
-  let addedToCart = false;
+  // Shuffled + distinct, so a multi-item view defaults to different products
+  // rather than repeatedly landing on the same one by chance.
+  const candidates = shuffledProducts(rng);
+  const viewCount = Math.min(candidates.length, 1 + Math.floor(rng() * 3)); // 1-3 distinct product views
+  let itemsAdded = 0;
   for (let i = 0; i < viewCount; i++) {
-    const product = randomProduct(rng);
+    const product = candidates[i];
     await think(rng);
     await page.getByRole('link', { name: product.name }).click();
     await page.waitForURL(`**/product/${product.id}`, { timeout: 10000 });
-    const shouldAdd = forceAddToCart && i === viewCount - 1 ? true : rng() < 0.6;
+    const isLastChance = forceAddToCart && i === viewCount - 1 && itemsAdded === 0;
+    const shouldAdd = isLastChance ? true : rng() < (forceAddToCart ? 0.75 : 0.6);
     if (shouldAdd) {
       const size = randomSize(product, rng);
       await page.getByRole('button', { name: size, exact: true }).click();
       await page.getByRole('button', { name: 'Add to Bag' }).click();
       await page.getByRole('button', { name: 'View Bag' }).waitFor({ timeout: 5000 });
-      addedToCart = true;
+      itemsAdded += 1;
     }
     if (i < viewCount - 1) await goToShopViaHeader(page);
   }
-  return addedToCart;
+  return itemsAdded > 0;
+}
+
+// Occasionally buy more than one unit of an item — real baskets aren't
+// always qty-1-per-line. Cart quantity steppers (src/pages/Cart.jsx) have no
+// aria-label, just literal "+"/"-" text, so match on that.
+async function maybeBumpQuantities(page, rng) {
+  const plusButtons = page.getByRole('button', { name: '+', exact: true });
+  const count = await plusButtons.count();
+  if (count === 0) return;
+  const bumps = Math.floor(rng() * 3); // 0-2 quantity bumps this cart visit
+  for (let i = 0; i < bumps; i++) {
+    const idx = Math.floor(rng() * count);
+    await plusButtons.nth(idx).click();
+    await think(rng, 300, 900);
+  }
 }
 
 async function completeCheckout(page, identity, rng) {
   await goToCartViaHeader(page);
+  await maybeBumpQuantities(page, rng);
   await page.getByRole('button', { name: 'Proceed to Checkout' }).click();
   await page.waitForURL('**/checkout', { timeout: 10000 });
   await think(rng, 500, 1500);

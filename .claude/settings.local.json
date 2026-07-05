@@ -4,7 +4,10 @@
       "Bash(npm install *)",
       "Bash(npm run *)",
       "Bash(git rm *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(mkdir -p public/icons)",
+      "Bash(python3 \"/c/Users/44737/AppData/Local/Temp/claude/C--Users-44737-Desktop-mahfuz-merchandise-store/fbbfa7bf-89b1-4cd8-85aa-4f992f5a8e18/scratchpad/gen_icons.py\" \"public/icons\")",
+      "Bash(python3 *)"
     ]
   }
 }

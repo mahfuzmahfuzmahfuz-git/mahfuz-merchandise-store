@@ -3,6 +3,7 @@ dist
 *.png
 *.jpg
 *.jpeg
+!public/icons/*.png
 .env.local
 .vercel
 
