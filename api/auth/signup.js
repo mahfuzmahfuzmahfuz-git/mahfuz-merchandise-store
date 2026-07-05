@@ -18,6 +18,7 @@ export default async function handler(req, res) {
 
   const normalizedEmail = email.trim().toLowerCase();
   const trimmedName = name.trim();
+  const isSynthetic = normalizedEmail.endsWith('@synthetic.mahfuzmerch.test');
 
   try {
     const existing = await sql`
@@ -30,8 +31,8 @@ export default async function handler(req, res) {
     const passwordHash = await bcrypt.hash(password, 10);
 
     const inserted = await sql`
-      INSERT INTO users (email, password_hash, name)
-      VALUES (${normalizedEmail}, ${passwordHash}, ${trimmedName})
+      INSERT INTO users (email, password_hash, name, is_synthetic)
+      VALUES (${normalizedEmail}, ${passwordHash}, ${trimmedName}, ${isSynthetic})
       RETURNING id, name, email
     `;
     const user = inserted.rows[0];

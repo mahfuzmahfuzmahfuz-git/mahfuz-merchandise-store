@@ -1,0 +1,52 @@
+name: Synthetic Traffic Bot
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: synthetic-traffic-bot
+  cancel-in-progress: false
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Roster state is disposable synthetic bot state, not production data —
+      # see plan doc for why a cache (not a DB table) is the pragmatic choice.
+      # Cache keys are immutable in GitHub Actions, so the save key must be
+      # unique per run (github.run_id) while restore falls back to the most
+      # recent previous run via restore-keys prefix matching.
+      - name: Restore roster state
+        uses: actions/cache/restore@v4
+        with:
+          path: scripts/synthetic-bot/state
+          key: synthetic-bot-roster-${{ github.run_id }}
+          restore-keys: |
+            synthetic-bot-roster-
+
+      - name: Run synthetic traffic batch
+        env:
+          PRODUCTION_URL: https://mahfuz-merchandise-store.vercel.app
+        run: node scripts/synthetic-bot/run.js
+
+      - name: Save roster state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: scripts/synthetic-bot/state
+          key: synthetic-bot-roster-${{ github.run_id }}

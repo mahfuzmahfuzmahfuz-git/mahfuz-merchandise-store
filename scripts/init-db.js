@@ -24,6 +24,10 @@ async function main() {
     CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_idx ON users (LOWER(email))
   `;
 
+  await sql`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_synthetic BOOLEAN NOT NULL DEFAULT false
+  `;
+
   console.log('users table ready.');
 }
 
