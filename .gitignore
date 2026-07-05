@@ -24,3 +24,6 @@ local.properties
 
 # Signing key - excluded explicitly, not swept up in the build-artifact rules above
 android.keystore
+
+# Firebase config with API keys - excluded explicitly, same treatment as android.keystore
+app/google-services.json
