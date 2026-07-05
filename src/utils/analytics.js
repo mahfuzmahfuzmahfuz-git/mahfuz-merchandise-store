@@ -1,4 +1,4 @@
-// ─── GA4 Ecommerce DataLayer Utilities ───────────────────────────────────────
+// ─── GA4 Ecommerce + Account DataLayer Utilities ─────────────────────────────
 //
 // All ecommerce events go through pushEcommerceEvent() rather than calling
 // window.dataLayer.push() directly. This enforces two rules from Google's GTM
@@ -111,4 +111,29 @@ export function toGA4Item(product, { size, quantity = 1, index: explicitIndex } 
   if (product.is_limited_edition !== undefined) item.is_limited_edition = product.is_limited_edition;
 
   return item;
+}
+
+// ─── Account DataLayer Utilities ──────────────────────────────────────────────
+//
+// sign_up/login/user_id are not ecommerce events, so they push directly rather
+// than through pushEcommerceEvent() (no ecommerce:null reset needed).
+
+export function pushSignUpEvent() {
+  if (typeof window === 'undefined' || !window.dataLayer) return;
+  window.dataLayer.push({ event: 'sign_up', method: 'email' });
+}
+
+export function pushLoginEvent() {
+  if (typeof window === 'undefined' || !window.dataLayer) return;
+  window.dataLayer.push({ event: 'login', method: 'email' });
+}
+
+// Pushes user_id as an explicit key (a real internal UUID, or null when logged
+// out) on every call — never omit the key. GTM's Data Layer variable resolves
+// the most recent value across the whole array, so omitting the key on a
+// later push would NOT clear an earlier session's value; it must be
+// overwritten with an explicit null instead.
+export function pushUserId(userId) {
+  if (typeof window === 'undefined' || !window.dataLayer) return;
+  window.dataLayer.push({ user_id: userId ?? null });
 }

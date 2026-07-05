@@ -10,24 +10,40 @@ import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderConfirmation from './pages/OrderConfirmation';
+import Signup from './pages/Signup';
+import Login from './pages/Login';
+import Account from './pages/Account';
 import { STORAGE_KEY, executeGtagUpdate } from './components/ConsentBanner';
+import { useAuth } from './context/AuthContext';
+import { pushUserId } from './utils/analytics';
 
 // Ensure dataLayer exists before GTM loads — GTM appends to this array.
 // Defined here as a safety net; index.html also initialises it before the GTM snippet.
 window.dataLayer = window.dataLayer || [];
 
-// Tracks React Router location changes and pushes a virtual page view to GTM.
-// This is needed because React is a SPA — the browser never does a real page
-// load between routes, so GTM wouldn't fire its page view trigger automatically.
+// Tracks React Router location changes and pushes a virtual page view to GTM,
+// plus the current user_id (or null) so GA4's User-ID feature stays in sync
+// on every route while a session exists.
+//
+// The whole effect is gated behind the auth loading flag: until the initial
+// /api/auth/me check resolves we don't know if a session exists, so pushing
+// anything here first would either omit user_id for an already-logged-in user
+// or leave a stale value visible before it's known to be wrong. Once loading
+// resolves, both pushes fire together so a virtual_page_view is never
+// observed without an accompanying, correct user_id.
 function LocationTracker() {
   const location = useLocation();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
+    if (loading) return;
+
+    pushUserId(user ? user.id : null);
     window.dataLayer.push({
       event: 'virtual_page_view',
       page_path: location.pathname,
     });
-  }, [location.pathname]);
+  }, [location.pathname, user, loading]);
 
   return null; // purely a side-effect component, renders nothing
 }
@@ -77,6 +93,9 @@ export default function App() {
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/order-confirmation" element={<OrderConfirmation />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/account" element={<Account />} />
           </Routes>
         </main>
         {/* onManageCookies re-shows the banner without clearing localStorage,

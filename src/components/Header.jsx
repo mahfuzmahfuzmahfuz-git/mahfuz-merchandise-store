@@ -1,8 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Header() {
   const { cartCount } = useCart();
+  const { user, loading } = useAuth();
   const { pathname } = useLocation();
 
   const navLink = (to, label) => (
@@ -33,6 +35,10 @@ export default function Header() {
 
         {/* Right nav */}
         <nav className="flex items-center gap-8">
+          {/* While the initial session check is in flight, show nothing here
+              to avoid a flash of "Login" for an already-authenticated
+              returning user. */}
+          {!loading && (user ? navLink('/account', 'Account') : navLink('/login', 'Login'))}
           <Link
             to="/cart"
             className="text-[11px] tracking-[0.15em] uppercase font-sans transition-opacity duration-200 hover:opacity-50 opacity-70 relative"
