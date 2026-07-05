@@ -1,6 +1,7 @@
 import { buildArrival } from './channels.js';
 import { randomProduct, randomSize } from './products.js';
 import { generateIdentity } from './identity.js';
+import { pickUserAgent } from './stealth.js';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const think = (rng, min = 800, max = 2500) => delay(min + rng() * (max - min));
@@ -164,7 +165,7 @@ async function runReturnSession(page, rng, { account }, log) {
 //   { kind: 'new-signup', channel, role }               -> caller must persist the returned identity into the roster
 //   { kind: 'return', channel, account }
 export async function runSession(browser, baseUrl, job, rng, log) {
-  const context = await browser.newContext({ baseURL: baseUrl });
+  const context = await browser.newContext({ baseURL: baseUrl, userAgent: pickUserAgent(rng) });
   const page = await context.newPage();
   let identity = null;
 
