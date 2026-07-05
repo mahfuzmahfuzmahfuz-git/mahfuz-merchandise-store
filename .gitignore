@@ -10,3 +10,17 @@ dist
 .vercel
 .env*.local
 scripts/synthetic-bot/state/
+
+# Android / Bubblewrap build artifacts
+.gradle/
+.idea/
+build/
+app/build/
+*.apk
+*.aab
+*.apk.idsig
+hs_err_pid*.log
+local.properties
+
+# Signing key - excluded explicitly, not swept up in the build-artifact rules above
+android.keystore
