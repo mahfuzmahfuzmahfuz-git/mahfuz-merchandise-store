@@ -12,10 +12,27 @@ async function snapshotDataLayer(page, label, log) {
   log(label, dataLayer);
 }
 
-async function acceptConsent(page) {
-  const acceptButton = page.getByRole('button', { name: 'Accept All' });
-  await acceptButton.waitFor({ state: 'visible', timeout: 8000 });
-  await acceptButton.click();
+// Key must match STORAGE_KEY in src/components/ConsentBanner.jsx.
+const CONSENT_STORAGE_KEY = 'mahfuz_consent_state';
+
+// Seeds granted consent into localStorage before any page script runs, so
+// index.html's Consent Mode baseline reads it synchronously and defaults
+// analytics_storage/ad_storage to 'granted' from the very first hit —
+// instead of 'denied' followed by a click on the real banner a second or
+// more later. That gap matters: GA4 tags are gated on analytics_storage,
+// so the landing hit (the one that establishes session source/medium) would
+// otherwise fire while denied and never reach GA4. Channels with a positive
+// signal (UTM params, a known referrer) still get attributed correctly once
+// a later hit survives, but direct traffic has no signal to fall back on —
+// its landing hit IS the signal — so it's the one that ends up "(not set)"
+// / Unassigned instead of "(direct)". Pre-seeding consent removes the gap
+// entirely rather than racing it, and the banner never renders as a result,
+// so there's nothing left to click.
+async function seedConsent(context) {
+  await context.addInitScript(
+    ([key, state]) => window.localStorage.setItem(key, JSON.stringify(state)),
+    [CONSENT_STORAGE_KEY, { strictlyNecessary: true, analytics: true, marketing: true, timestamp: new Date().toISOString() }],
+  );
 }
 
 // Header nav (src/components/Header.jsx) is present on every route, so these
@@ -186,13 +203,13 @@ async function runReturnSession(page, rng, { account }, log) {
 //   { kind: 'return', channel, account }
 export async function runSession(browser, baseUrl, job, rng, log) {
   const context = await browser.newContext({ baseURL: baseUrl, userAgent: pickUserAgent(rng) });
+  await seedConsent(context);
   const page = await context.newPage();
   let identity = null;
 
   try {
     const arrival = buildArrival(baseUrl, job.channel, '/');
     await page.goto(arrival.url, arrival.gotoOptions);
-    await acceptConsent(page);
     await think(rng);
 
     if (job.kind === 'guest') {
