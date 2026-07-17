@@ -7,7 +7,16 @@
       "Bash(git add *)",
       "Bash(mkdir -p public/icons)",
       "Bash(python3 \"/c/Users/44737/AppData/Local/Temp/claude/C--Users-44737-Desktop-mahfuz-merchandise-store/fbbfa7bf-89b1-4cd8-85aa-4f992f5a8e18/scratchpad/gen_icons.py\" \"public/icons\")",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(git status *)",
+      "Bash(export JAVA_HOME=\"C:/Program Files/Android/Android Studio/jbr\")",
+      "Bash(./gradlew.bat assembleDebug)",
+      "Bash(adb install *)",
+      "Bash(adb shell *)",
+      "Bash(adb logcat *)",
+      "mcp__analytics-mcp__get_account_summaries",
+      "mcp__analytics-mcp__get_property_details",
+      "mcp__analytics-mcp__run_report"
     ]
   }
 }
