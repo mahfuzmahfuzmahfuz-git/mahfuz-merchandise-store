@@ -16,6 +16,7 @@ import Account from './pages/Account';
 import { STORAGE_KEY, executeGtagUpdate } from './components/ConsentBanner';
 import { useAuth } from './context/AuthContext';
 import { pushUserId } from './utils/analytics';
+import SupportWidget from './components/SupportWidget';
 
 // Ensure dataLayer exists before GTM loads — GTM appends to this array.
 // Defined here as a safety net; index.html also initialises it before the GTM snippet.
@@ -108,6 +109,8 @@ export default function App() {
         visible={consentVisible}
         onClose={() => setConsentVisible(false)}
       />
+
+      <SupportWidget />
     </>
   );
 }
